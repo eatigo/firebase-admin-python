@@ -296,6 +296,59 @@ def update_user(uid, **kwargs):
         raise AuthError(error.code, str(error), error.detail)
 
 
+def upload_users(uid, users, **kwargs):
+    """Updates an existing user account with the specified properties.
+
+    Args:
+        users:
+        [
+            {
+              "localId": string,
+              "email": string,
+              "emailVerified": boolean,
+              "displayName": string,
+              "providerUserInfo": [
+                {
+                  "providerId": string,
+                  "displayName": string,
+                  "photoUrl": string,
+                  "federatedId": string
+                }
+              ],
+              "photoUrl": string,
+              "passwordHash": bytes,
+              "salt": bytes,
+              "version": integer,
+              "passwordUpdatedAt": double
+            }
+        ]
+        kwargs: A series of keyword arguments (optional).
+    Keyword Args:
+        hash_algorithm: The password hash algorithm.
+                Supported algorithms are:
+                "SCRYPT"
+                "PBKDF_SHA1"
+                "HMAC_SHA256"
+                "HMAC_SHA512"
+                "HMAC_SHA1"
+                "HMAC_MD5"
+                "SHA1"
+                "MD5"
+        signer_key: The key for to hash the password.
+        salt_separator: The salt separator.
+        memory_cost: Memory cost for hash calculation. Used by scrypt similar algorithms.
+    Raises:
+        ValueError: If the properties are invalid.
+        AuthError: If an error occurs while updating the user account.
+    """
+    app = kwargs.pop('app', None)
+    user_manager = _get_auth_service(app).user_manager
+    try:
+        user_manager.upload_users(users, **kwargs)
+    except _user_mgt.ApiCallError as error:
+        raise AuthError(error.code, str(error), error.detail)
+
+
 def set_custom_user_claims(uid, custom_claims, app=None):
     """Sets additional claims on an existing user account.
 
