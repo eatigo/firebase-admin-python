@@ -296,11 +296,11 @@ def update_user(uid, **kwargs):
         raise AuthError(error.code, str(error), error.detail)
 
 
-def upload_users(uid, users, **kwargs):
+def upload_users(users, **kwargs):
     """Updates an existing user account with the specified properties.
 
     Args:
-        users:
+        users: list
         [
             {
               "localId": string,
