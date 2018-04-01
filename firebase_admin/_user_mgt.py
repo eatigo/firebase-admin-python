@@ -24,12 +24,12 @@ from six.moves import urllib
 
 import firebase_admin
 
-
 INTERNAL_ERROR = 'INTERNAL_ERROR'
 USER_NOT_FOUND_ERROR = 'USER_NOT_FOUND_ERROR'
 USER_CREATE_ERROR = 'USER_CREATE_ERROR'
 USER_UPDATE_ERROR = 'USER_UPDATE_ERROR'
 USER_DELETE_ERROR = 'USER_DELETE_ERROR'
+USER_UPLOAD_ERROR = 'USER_UPLOAD_ERROR'
 USER_DOWNLOAD_ERROR = 'LIST_USERS_ERROR'
 
 ID_TOOLKIT_URL = 'https://www.googleapis.com/identitytoolkit/v3/relyingparty/'
@@ -182,47 +182,55 @@ class UserManager(object):
     """Provides methods for interacting with the Google Identity Toolkit."""
 
     _VALIDATORS = {
-        'customAttributes' : _Validator.validate_custom_claims,
-        'deleteAttribute' : _Validator.validate_delete_list,
-        'deleteProvider' : _Validator.validate_delete_list,
-        'disabled' : _Validator.validate_disabled,
-        'disableUser' : _Validator.validate_disabled,
-        'displayName' : _Validator.validate_display_name,
-        'email' : _Validator.validate_email,
-        'emailVerified' : _Validator.validate_email_verified,
-        'localId' : _Validator.validate_uid,
-        'password' : _Validator.validate_password,
-        'phoneNumber' : _Validator.validate_phone,
-        'photoUrl' : _Validator.validate_photo_url,
-        'validSince' : _Validator.validate_valid_since,
+        'customAttributes': _Validator.validate_custom_claims,
+        'deleteAttribute': _Validator.validate_delete_list,
+        'deleteProvider': _Validator.validate_delete_list,
+        'disabled': _Validator.validate_disabled,
+        'disableUser': _Validator.validate_disabled,
+        'displayName': _Validator.validate_display_name,
+        'email': _Validator.validate_email,
+        'emailVerified': _Validator.validate_email_verified,
+        'localId': _Validator.validate_uid,
+        'password': _Validator.validate_password,
+        'phoneNumber': _Validator.validate_phone,
+        'photoUrl': _Validator.validate_photo_url,
+        'validSince': _Validator.validate_valid_since,
     }
 
     _CREATE_USER_FIELDS = {
-        'uid' : 'localId',
-        'display_name' : 'displayName',
-        'email' : 'email',
-        'email_verified' : 'emailVerified',
-        'phone_number' : 'phoneNumber',
-        'photo_url' : 'photoUrl',
-        'password' : 'password',
-        'disabled' : 'disabled',
+        'uid': 'localId',
+        'display_name': 'displayName',
+        'email': 'email',
+        'email_verified': 'emailVerified',
+        'phone_number': 'phoneNumber',
+        'photo_url': 'photoUrl',
+        'password': 'password',
+        'disabled': 'disabled',
     }
 
     _UPDATE_USER_FIELDS = {
-        'display_name' : 'displayName',
-        'email' : 'email',
-        'email_verified' : 'emailVerified',
-        'phone_number' : 'phoneNumber',
-        'photo_url' : 'photoUrl',
-        'password' : 'password',
-        'disabled' : 'disableUser',
-        'custom_claims' : 'customAttributes',
-        'valid_since' : 'validSince',
+        'display_name': 'displayName',
+        'email': 'email',
+        'email_verified': 'emailVerified',
+        'phone_number': 'phoneNumber',
+        'photo_url': 'photoUrl',
+        'password': 'password',
+        'disabled': 'disableUser',
+        'custom_claims': 'customAttributes',
+        'valid_since': 'validSince',
+    }
+
+    _UPLOAD_USER_FIELDS = {
+        'hashAlgorithm': 'hash_algorithm',
+        'signerKey': 'signer_key',
+        'saltSeparator': 'salt_separator',
+        'rounds': 'rounds',
+        'memory_cost': 'memory_cost',
     }
 
     _REMOVABLE_FIELDS = {
-        'displayName' : 'DISPLAY_NAME',
-        'photoUrl' : 'PHOTO_URL'
+        'displayName': 'DISPLAY_NAME',
+        'photoUrl': 'PHOTO_URL'
     }
 
     def __init__(self, app):
@@ -237,15 +245,15 @@ class UserManager(object):
         if 'uid' in kwargs:
             key, key_type = kwargs.pop('uid'), 'user ID'
             _Validator.validate_uid(key)
-            payload = {'localId' : [key]}
+            payload = {'localId': [key]}
         elif 'email' in kwargs:
             key, key_type = kwargs.pop('email'), 'email'
             _Validator.validate_email(key)
-            payload = {'email' : [key]}
+            payload = {'email': [key]}
         elif 'phone_number' in kwargs:
             key, key_type = kwargs.pop('phone_number'), 'phone number'
             _Validator.validate_phone(key)
-            payload = {'phoneNumber' : [key]}
+            payload = {'phoneNumber': [key]}
         else:
             raise ValueError('Unsupported keyword arguments: {0}.'.format(kwargs))
 
@@ -332,13 +340,26 @@ class UserManager(object):
         """Deletes the user identified by the specified user ID."""
         _Validator.validate_uid(uid)
         try:
-            response = self._request('post', 'deleteAccount', json={'localId' : uid})
+            response = self._request('post', 'deleteAccount', json={'localId': uid})
         except requests.exceptions.RequestException as error:
             self._handle_http_error(
                 USER_DELETE_ERROR, 'Failed to delete user: {0}.'.format(uid), error)
         else:
             if not response or not response.get('kind'):
                 raise ApiCallError(USER_DELETE_ERROR, 'Failed to delete user: {0}.'.format(uid))
+
+    def upload_users(self, users, **kwargs):
+        """Uploads users in batch."""
+        try:
+            users_upload_json = self._init_payload("upload_users", UserManager._UPLOAD_USER_FIELDS, **kwargs)
+            users_upload_json['users'] = users
+            response = self._request('post', 'uploadAccount', json=users_upload_json)
+        except requests.exceptions.RequestException as error:
+            self._handle_http_error(
+                USER_UPLOAD_ERROR, 'Failed to upload users.', error)
+        else:
+            if not response or not response.get('kind'):
+                raise ApiCallError(USER_UPLOAD_ERROR, 'Failed to upload users.')
 
     def _handle_http_error(self, code, msg, error):
         if error.response is not None:

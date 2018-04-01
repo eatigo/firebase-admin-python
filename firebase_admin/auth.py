@@ -31,7 +31,6 @@ from firebase_admin import credentials
 from firebase_admin import _user_mgt
 from firebase_admin import _utils
 
-
 # Provided for overriding during tests.
 _request = transport.requests.Request()
 
@@ -104,9 +103,10 @@ def verify_id_token(id_token, app=None, check_revoked=False):
     verified_claims = token_generator.verify_id_token(id_token)
     if check_revoked:
         user = get_user(verified_claims.get('uid'), app)
-        if  verified_claims.get('iat') * 1000 < user.tokens_valid_after_timestamp:
+        if verified_claims.get('iat') * 1000 < user.tokens_valid_after_timestamp:
             raise AuthError(_ID_TOKEN_REVOKED, 'The Firebase ID token has been revoked.')
     return verified_claims
+
 
 def revoke_refresh_tokens(uid, app=None):
     """Revokes all refresh tokens for an existing user.
@@ -122,6 +122,7 @@ def revoke_refresh_tokens(uid, app=None):
     """
     user_manager = _get_auth_service(app).user_manager
     user_manager.update_user(uid, valid_since=int(time.time()))
+
 
 def get_user(uid, app=None):
     """Gets the user data corresponding to the specified user ID.
@@ -144,6 +145,7 @@ def get_user(uid, app=None):
         return UserRecord(response)
     except _user_mgt.ApiCallError as error:
         raise AuthError(error.code, str(error), error.detail)
+
 
 def get_user_by_email(email, app=None):
     """Gets the user data corresponding to the specified user email.
@@ -190,6 +192,7 @@ def get_user_by_phone_number(phone_number, app=None):
     except _user_mgt.ApiCallError as error:
         raise AuthError(error.code, str(error), error.detail)
 
+
 def list_users(page_token=None, max_results=_user_mgt.MAX_LIST_USERS_RESULTS, app=None):
     """Retrieves a page of user accounts from a Firebase project.
 
@@ -213,11 +216,13 @@ def list_users(page_token=None, max_results=_user_mgt.MAX_LIST_USERS_RESULTS, ap
         AuthError: If an error occurs while retrieving the user accounts.
     """
     user_manager = _get_auth_service(app).user_manager
+
     def download(page_token, max_results):
         try:
             return user_manager.list_users(page_token, max_results)
         except _user_mgt.ApiCallError as error:
             raise AuthError(error.code, str(error), error.detail)
+
     return ListUsersPage(download, page_token, max_results)
 
 
@@ -290,6 +295,7 @@ def update_user(uid, **kwargs):
     except _user_mgt.ApiCallError as error:
         raise AuthError(error.code, str(error), error.detail)
 
+
 def set_custom_user_claims(uid, custom_claims, app=None):
     """Sets additional claims on an existing user account.
 
@@ -315,6 +321,7 @@ def set_custom_user_claims(uid, custom_claims, app=None):
         user_manager.update_user(uid, custom_claims=custom_claims)
     except _user_mgt.ApiCallError as error:
         raise AuthError(error.code, str(error), error.detail)
+
 
 def delete_user(uid, app=None):
     """Deletes the user identified by the specified user ID.
@@ -539,6 +546,7 @@ class UserMetadata(object):
             return int(self._data['lastLoginAt'])
         return None
 
+
 class ExportedUserRecord(UserRecord):
     """Contains metadata associated with a user including password hash and salt."""
 
@@ -682,7 +690,6 @@ class _TokenGenerator(object):
         'exp', 'firebase', 'iat', 'iss', 'jti', 'nbf', 'nonce', 'sub'
     ])
 
-
     def __init__(self, app):
         """Initializes FirebaseAuth from a FirebaseApp instance.
 
@@ -714,16 +721,16 @@ class _TokenGenerator(object):
                 raise ValueError('developer_claims must be a dictionary')
 
             disallowed_keys = set(developer_claims.keys()
-                                 ) & self._RESERVED_CLAIMS_
+                                  ) & self._RESERVED_CLAIMS_
             if disallowed_keys:
                 if len(disallowed_keys) > 1:
                     error_message = ('Developer claims {0} are reserved and '
                                      'cannot be specified.'.format(
-                                         ', '.join(disallowed_keys)))
+                        ', '.join(disallowed_keys)))
                 else:
                     error_message = ('Developer claim {0} is reserved and '
                                      'cannot be specified.'.format(
-                                         ', '.join(disallowed_keys)))
+                        ', '.join(disallowed_keys)))
                 raise ValueError(error_message)
 
         if not uid or not isinstance(uid, six.string_types) or len(uid) > 128:
@@ -805,7 +812,7 @@ class _TokenGenerator(object):
         elif header.get('alg') != 'RS256':
             error_message = ('Firebase ID token has incorrect algorithm. '
                              'Expected "RS256" but got "{0}". {1}'.format(
-                                 header.get('alg'), verify_id_token_msg))
+                header.get('alg'), verify_id_token_msg))
         elif audience != project_id:
             error_message = (
                 'Firebase ID token has incorrect "aud" (audience) claim. '
